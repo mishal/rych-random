@@ -103,7 +103,7 @@ class RandomTest extends TestCase
         $random = new Random(new OpenSSLGenerator());
         $int = $random->getRandomInteger(10);
 
-        $this->assertTrue($int >= 10);
+        $this->assertTrue($int >= 10, 'The generated integer is greater than min');
     }
 
 }
