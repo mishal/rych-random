@@ -10,6 +10,7 @@
 
 namespace Rych\Random\Tests;
 
+use Rych\Random\Generator\OpenSSLGenerator;
 use Rych\Random\Random;
 use PHPUnit_Framework_TestCase as TestCase;
 
@@ -91,6 +92,18 @@ class RandomTest extends TestCase
         $this->assertRegExp('/^[0-9]{10}$/', $random->getRandomString(10, '0123456789'));
         $this->assertRegExp('/^[qwerty]{10}$/', $random->getRandomString(10, 'qwerty'));
         $this->assertRegExp('/.{22}/', $random->getRandomString(21) . $random->getRandomString(1, '.Oeu'));
+    }
+
+    public function testOpenSSLGeneratesInteger()
+    {
+        if (!OpenSSLGenerator::isSupported()) {
+            $this->markTestSkipped('OpenSSL is not supported on this platform.');
+        }
+
+        $random = new Random(new OpenSSLGenerator());
+        $int = $random->getRandomInteger(10);
+
+        $this->assertTrue($int >= 10);
     }
 
 }
