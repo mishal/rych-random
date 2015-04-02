@@ -94,17 +94,33 @@ class RandomTest extends TestCase
         $this->assertRegExp('/.{22}/', $random->getRandomString(21) . $random->getRandomString(1, '.Oeu'));
     }
 
-    public function testOpenSSLGeneratesInteger()
+    /**
+     * @dataProvider getDataForOpenSSLGeneratesIntegerTest
+     */
+    public function testOpenSSLGeneratesInteger($min, $max)
     {
         if (!OpenSSLGenerator::isSupported()) {
             $this->markTestSkipped('OpenSSL is not supported on this platform.');
         }
 
         $random = new Random(new OpenSSLGenerator());
-        $int = $random->getRandomInteger(10);
+        $int = $random->getRandomInteger(10, $max !== null ? $max : PHP_INT_MAX);
 
-        $this->assertTrue($int >= 10, 'The generated integer is greater than min');
+        $this->assertTrue($int >= 10, 'The generated integer ' . $int . ' is greater (or equal) ' . $min);
+
+        if ($max !== null) {
+            $this->assertTrue($int <= $max, 'The generated integer ' . $int . ' is smaller (or equal) to ' . $max);
+        }
     }
 
+    public function getDataForOpenSSLGeneratesIntegerTest()
+    {
+        return array(
+            array(10, null),
+            array(10, 150),
+            array(-10, 150),
+            array(-10, null),
+        );
+    }
 }
 
