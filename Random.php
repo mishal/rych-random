@@ -120,23 +120,59 @@ class Random
      * @param  integer $min The minimum expected value. Defaults to 0.
      * @param  integer $max The maximum expected value. Defaults to PHP_INT_MAX.
      * @return integer A random integer between the specified values, inclusive.
+     * @author Anthony Ferrara <ircmaxell@ircmaxell.com>
+     * @author Timo Hamina
+     * @throws \RangeException If supplied range is too great to generate
      */
     public function getRandomInteger($min = 0, $max = PHP_INT_MAX)
     {
-        $min = (int) $min;
-        $max = (int) $max;
+        $tmp = (int)max($max, $min);
+        $min = (int)min($max, $min);
+        $max = $tmp;
         $range = $max - $min;
+        if ($range == 0) {
+            return $max;
+        } elseif ($range > PHP_INT_MAX || is_float($range) || $range < 0) {
+            /**
+             * This works, because PHP will auto-convert it to a float at this point,
+             * But on 64 bit systems, the float won't have enough precision to
+             * actually store the difference, so we need to check if it's a float
+             * and hence auto-converted...
+             */
+            throw new \RangeException(
+                'The supplied range is too great to generate'
+            );
+        }
 
-        $bits  = $this->getBitsInInteger($range);
-        $bytes = $this->getBytesInBits($bits);
-        $mask  = (int) ((1 << $bits) - 1);
+        $bits = $this->getBitsInInteger($range);
+        $bytes = (int)max($this->getBytesInBits($bits), 1);
+        if ($bits == 63) {
+            $mask = 0x7fffffffffffffff;
+        } else {
+            $mask = (int)(pow(2, $bits) - 1);
+        }
 
+        /**
+         * The mask is a better way of dropping unused bits.  Basically what it does
+         * is to set all the bits in the mask to 1 that we may need.  Since the max
+         * range is PHP_INT_MAX, we will never need negative numbers (which would
+         * have the MSB set on the max int possible to generate).  Therefore we
+         * can just mask that away.  Since pow returns a float, we need to cast
+         * it back to an int so the mask will work.
+         *
+         * On a 64 bit platform, that means that PHP_INT_MAX is 2^63 - 1.  Which
+         * is also the mask if 63 bits are needed (by the log(range, 2) call).
+         * So if the computed result is negative (meaning the 64th bit is set), the
+         * mask will correct that.
+         *
+         * This turns out to be slightly better than the shift as we don't need to
+         * worry about "fixing" negative values.
+         */
         do {
-            $byteString = $this->generator->generate($bytes);
-            $result = hexdec(bin2hex($byteString)) & $mask;
+            $test = $this->generator->generate($bytes);
+            $result = hexdec(bin2hex($test)) & $mask;
         } while ($result > $range);
-
-        return (int) $result + $min;
+        return $result + $min;
     }
 
     /**
